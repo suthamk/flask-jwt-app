@@ -1,0 +1,186 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Flask JWT Test UI</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 2rem;
+      background: #f4f6f8;
+      color: #1f2937;
+    }
+    .container {
+      max-width: 720px;
+      margin: 0 auto;
+      background: #fff;
+      border: 1px solid #e5e7eb;
+      border-radius: 8px;
+      padding: 1.25rem;
+    }
+    h1 {
+      margin-top: 0;
+      font-size: 1.5rem;
+    }
+    .row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.75rem;
+      margin-bottom: 0.75rem;
+    }
+    label {
+      font-size: 0.9rem;
+      display: block;
+      margin-bottom: 0.25rem;
+    }
+    input {
+      width: 100%;
+      padding: 0.5rem;
+      border: 1px solid #d1d5db;
+      border-radius: 6px;
+      box-sizing: border-box;
+    }
+    .buttons {
+      display: flex;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+      margin: 0.75rem 0 1rem;
+    }
+    button {
+      border: 0;
+      border-radius: 6px;
+      padding: 0.55rem 0.85rem;
+      cursor: pointer;
+      background: #2563eb;
+      color: #fff;
+    }
+    button.secondary {
+      background: #374151;
+    }
+    .token {
+      background: #f9fafb;
+      border: 1px solid #e5e7eb;
+      border-radius: 6px;
+      padding: 0.5rem;
+      margin-bottom: 1rem;
+      word-break: break-all;
+      font-size: 0.9rem;
+    }
+    pre {
+      background: #111827;
+      color: #f3f4f6;
+      border-radius: 8px;
+      padding: 0.9rem;
+      min-height: 160px;
+      overflow: auto;
+      margin: 0;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Flask JWT Test UI</h1>
+
+    <div class="row">
+      <div>
+        <label for="username">Username</label>
+        <input id="username" placeholder="e.g. testuser">
+      </div>
+      <div>
+        <label for="password">Password</label>
+        <input id="password" type="password" placeholder="e.g. testpass123">
+      </div>
+    </div>
+
+    <div class="buttons">
+      <button id="registerBtn">Register</button>
+      <button id="loginBtn">Login</button>
+      <button id="protectedBtn" class="secondary">Call Protected</button>
+      <button id="clearBtn" class="secondary">Clear Token</button>
+    </div>
+
+    <div class="token">
+      <strong>Current token:</strong>
+      <div id="tokenDisplay">None</div>
+    </div>
+
+    <pre id="output">Ready. Use the buttons above to test your API.</pre>
+  </div>
+
+  <script>
+    let accessToken = "";
+
+    const usernameInput = document.getElementById("username");
+    const passwordInput = document.getElementById("password");
+    const output = document.getElementById("output");
+    const tokenDisplay = document.getElementById("tokenDisplay");
+
+    function setOutput(title, data) {
+      output.textContent = `${title}\n\n${JSON.stringify(data, null, 2)}`;
+    }
+
+    function updateTokenView() {
+      tokenDisplay.textContent = accessToken || "None";
+    }
+
+    function getPayload() {
+      return {
+        username: usernameInput.value.trim(),
+        password: passwordInput.value
+      };
+    }
+
+    async function callApi(path, method, body, token) {
+      const headers = { "Content-Type": "application/json" };
+      if (token) {
+        headers.Authorization = `Bearer ${token}`;
+      }
+
+      const response = await fetch(path, {
+        method,
+        headers,
+        body: body ? JSON.stringify(body) : undefined
+      });
+
+      let data;
+      try {
+        data = await response.json();
+      } catch {
+        data = { raw: await response.text() };
+      }
+
+      return { status: response.status, data };
+    }
+
+    document.getElementById("registerBtn").addEventListener("click", async () => {
+      const payload = getPayload();
+      const result = await callApi("/auth/register", "POST", payload);
+      setOutput("Register response", result);
+    });
+
+    document.getElementById("loginBtn").addEventListener("click", async () => {
+      const payload = getPayload();
+      const result = await callApi("/auth/login", "POST", payload);
+      if (result.status === 200 && result.data.access_token) {
+        accessToken = result.data.access_token;
+        updateTokenView();
+      }
+      setOutput("Login response", result);
+    });
+
+    document.getElementById("protectedBtn").addEventListener("click", async () => {
+      const result = await callApi("/auth/protected", "GET", null, accessToken);
+      setOutput("Protected response", result);
+    });
+
+    document.getElementById("clearBtn").addEventListener("click", () => {
+      accessToken = "";
+      updateTokenView();
+      setOutput("Token cleared", { ok: true });
+    });
+
+    updateTokenView();
+  </script>
+</body>
+</html>
