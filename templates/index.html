@@ -143,11 +143,12 @@
         body: body ? JSON.stringify(body) : undefined
       });
 
+      const rawBody = await response.text();
       let data;
       try {
-        data = await response.json();
+        data = rawBody ? JSON.parse(rawBody) : {};
       } catch {
-        data = { raw: await response.text() };
+        data = { raw: rawBody };
       }
 
       return { status: response.status, data };
